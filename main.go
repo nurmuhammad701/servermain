@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"mainserver/logs"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -52,6 +53,7 @@ func (lb *LoadBalancer) NextServer() *Server {
 }
 
 func main() {
+	logs := logs.NewLogger()
 	serverURLs := []string{
 		"http://13.38.70.151:8081",
 		"http://15.237.51.177:8082",
@@ -72,10 +74,13 @@ func main() {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
+		clientIP := c.ClientIP()
+		log.Printf("Request from IP: %s", clientIP)
 
 		proxy := httputil.NewSingleHostReverseProxy(url)
 		proxy.ServeHTTP(c.Writer, c.Request)
 		log.Printf("Request forwarded to %s\n", server.URL)
+		logs.Info("Request forwarded to %s\nRequest from IP: %s\n\n", server.URL, clientIP)
 	})
 
 	fmt.Println("Load Balancer is running on :8080")
