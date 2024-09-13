@@ -50,8 +50,14 @@ func (s *Server) IsAlive() bool {
 }
 
 func (lb *LoadBalancer) NextServer() *Server {
-	next := atomic.AddInt64(&lb.current, 1) % int64(len(lb.servers))
-	return lb.servers[next]
+	serverCount := len(lb.servers)
+	for i := 0; i < serverCount; i++ {
+		next := atomic.AddInt64(&lb.current, 1) % int64(serverCount)
+		if lb.servers[next].IsAlive() {
+			return lb.servers[next]
+		}
+	}
+	return nil
 }
 
 func (lb *LoadBalancer) HealthCheck() {
