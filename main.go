@@ -80,7 +80,7 @@ func main() {
 		proxy := httputil.NewSingleHostReverseProxy(url)
 		proxy.ServeHTTP(c.Writer, c.Request)
 		log.Printf("Request forwarded to %s\n", server.URL)
-		logs.Info("Request forwarded to %s\nRequest from IP: %s\n\n", server.URL, clientIP)
+		logs.Info(fmt.Sprintf("Request forwarded to %s. Request from IP: %s", server.URL, clientIP))
 	})
 
 	fmt.Println("Load Balancer is running on :8080")
