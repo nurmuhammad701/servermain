@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"mainserver/logs"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,6 +54,36 @@ func (lb *LoadBalancer) NextServer() *Server {
 	return lb.servers[next]
 }
 
+func (lb *LoadBalancer) HealthCheck() {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	for {
+		for _, server := range lb.servers {
+			alive, err := isServerAlive(client, server.URL+"/user/list")
+			server.SetAlive(alive)
+			if alive {
+				fmt.Printf("Server %s: working\n", server.URL)
+			} else {
+				fmt.Printf("Server %s: not working (cause: %v)\n", server.URL, err)
+			}
+		}
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func isServerAlive(client *http.Client, url string) (bool, error) {
+	resp, err := client.Get(url)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return false, errors.New("Server status is not good")
+	}
+	return true, nil
+}
+
 func main() {
 	logs := logs.NewLogger()
 	serverURLs := []string{
@@ -59,6 +91,8 @@ func main() {
 		"http://15.237.51.177:8082",
 	}
 	lb := NewLoadBalancer(serverURLs)
+
+	go lb.HealthCheck()
 
 	r := gin.Default()
 
